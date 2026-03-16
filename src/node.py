@@ -21,9 +21,10 @@ class Node:
         node.stop()
     """
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str, port: int, nickname: str = ""):
         self.host = host
         self.port = port
+        self.nickname = nickname
 
         self.transport = UDPTransport()
         self.router = MessageRouter()
@@ -54,6 +55,7 @@ class Node:
         """Envia uma mensagem de chat para o endereço de destino."""
         msg = Message(
             sender=self.addr,
+            sender_name=self.nickname,
             receiver=dest,
             body=text,
         )
@@ -64,8 +66,14 @@ class Node:
 
     def _handle_chat(self, message: Message) -> None:
         """Handler para mensagens do tipo CHAT — imprime no terminal."""
-        sender = f"{message.sender[0]}:{message.sender[1]}"
-        print(f"[Recebido ← {sender}] {message.body}")
+        contact = self.contacts.get_by_addr(tuple(message.sender))
+        if contact is not None:
+            display_name = contact.name
+        elif message.sender_name:
+            display_name = message.sender_name
+        else:
+            display_name = f"{message.sender[0]}:{message.sender[1]}"
+        print(f"[{display_name}] {message.body}")
 
     def _handle_ack(self, message: Message) -> None:
         """Handler para mensagens do tipo ACK — placeholder para futuro."""

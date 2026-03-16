@@ -40,6 +40,13 @@ class ContactBook:
         """Retorna o contato pelo nome, ou None se não existir."""
         return self._contacts.get(name)
 
+    def get_by_addr(self, addr: tuple[str, int]) -> Contact | None:
+        """Busca reversa: retorna o contato pelo endereço, ou None."""
+        for contact in self._contacts.values():
+            if contact.addr == addr:
+                return contact
+        return None
+
     def list_all(self) -> list[Contact]:
         """Retorna todos os contatos cadastrados."""
         return list(self._contacts.values())

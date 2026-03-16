@@ -67,7 +67,11 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=5000, help="Porta para escuta (default: 5000)")
     args = parser.parse_args()
 
-    node = Node(args.host, args.port)
+    nickname = input("Digite seu nome/apelido: ").strip()
+    while not nickname:
+        nickname = input("Nome não pode ser vazio. Digite seu nome/apelido: ").strip()
+
+    node = Node(args.host, args.port, nickname=nickname)
     node.start()
 
     try:

@@ -23,6 +23,7 @@ class Message(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     sender: tuple[str, int]
+    sender_name: str = ""
     receiver: tuple[str, int]
     body: str
     type: MessageType = MessageType.CHAT
