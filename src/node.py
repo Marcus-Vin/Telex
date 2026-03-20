@@ -47,12 +47,12 @@ class Node:
         if self.port == 0 and self.transport._sock is not None:
             _, self.port = self.transport._sock.getsockname()
         self.transport.listen(self._on_receive)
-        print(f"[Node] Escutando em {self.host}:{self.port}")
+        print(f"\x1b[33m[Node] Escutando em {self.host}:{self.port}\x1b[0m")
 
     def stop(self) -> None:
         """Para a escuta e fecha o socket."""
         self.transport.close()
-        print("[Node] Encerrado.")
+        print("\x1b[33m[Node] Encerrado.\x1b[0m")
 
     def send(self, dest: tuple[str, int], text: str) -> None:
         """Envia uma mensagem de chat para o endereço de destino."""
@@ -62,8 +62,11 @@ class Node:
             receiver=dest,
             body=text,
         )
+        receiver_name = self.contacts.get_by_addr(dest).name
+        if receiver_name is None:
+            receiver_name = f"{dest[0]}:{dest[1]}"
         self.transport.send_to(msg.to_bytes(), dest)
-        print(f"[Enviado → {dest[0]}:{dest[1]}] {text}")
+        print(f"\x1b[34m[Enviado → {receiver_name}] {text}\x1b[0m")
 
     # ── Handlers ──────────────────────────────────────────────
 
@@ -90,4 +93,4 @@ class Node:
             message = Message.from_bytes(data)
             self.router.dispatch(message)
         except Exception as e:
-            print(f"[Node] Erro ao processar datagrama de {addr}: {e}")
+            print(f"\x1b[31m[Node] Erro ao processar datagrama de {addr}: {e}\x1b[0m")
