@@ -43,6 +43,9 @@ class Node:
     def start(self) -> None:
         """Inicia o nó: faz bind no socket e começa a escutar."""
         self.transport.bind(self.host, self.port)
+        # Atualiza a porta caso tenha sido passada como 0 (porta efêmera)
+        if self.port == 0 and self.transport._sock is not None:
+            _, self.port = self.transport._sock.getsockname()
         self.transport.listen(self._on_receive)
         print(f"[Node] Escutando em {self.host}:{self.port}")
 
@@ -73,7 +76,7 @@ class Node:
             display_name = message.sender_name
         else:
             display_name = f"{message.sender[0]}:{message.sender[1]}"
-        print(f"[{display_name}] {message.body}")
+        print(f"\x1b[32m[{display_name}] {message.body}\x1b[0m")
 
     def _handle_ack(self, message: Message) -> None:
         """Handler para mensagens do tipo ACK — placeholder para futuro."""

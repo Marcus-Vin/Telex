@@ -64,7 +64,7 @@ def input_loop(node: Node) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Telex — Chat P2P sobre UDP")
     parser.add_argument("--host", default="0.0.0.0", help="IP para escuta (default: 0.0.0.0)")
-    parser.add_argument("--port", type=int, default=5000, help="Porta para escuta (default: 5000)")
+    parser.add_argument("--port", type=int, default=0, help="Porta para escuta (default: 5000)")
     args = parser.parse_args()
 
     nickname = input("Digite seu nome/apelido: ").strip()
