@@ -14,6 +14,7 @@ class Contact:
         self.name = name
         self.addr = tuple(addr)
         self.online = online
+        self.last_seen: float = 0.0
 
     def __repr__(self) -> str:
         status = "ON" if self.online else "OFF"

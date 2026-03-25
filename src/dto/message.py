@@ -12,6 +12,8 @@ class MessageType(str, Enum):
 
     CHAT = "CHAT"
     ACK = "ACK"
+    PING = "PING"
+    PONG = "PONG"
 
 
 class Message(BaseModel):
