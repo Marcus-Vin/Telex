@@ -211,6 +211,23 @@ class Node:
         )
         self.transport.send_to(ack.to_bytes(), tuple(original.sender))
 
+    def ping_contact(self, contact_name: str) -> None:
+        """Envia um PING imediato a um contato específico (ex: ao adicioná-lo)."""
+        contact = self.contacts.get(contact_name)
+        if contact is None:
+            return
+        try:
+            ping = Message(
+                sender=self.addr,
+                sender_name=self.nickname,
+                receiver=contact.addr,
+                body="",
+                type=MessageType.PING,
+            )
+            self.transport.send_to(ping.to_bytes(), contact.addr)
+        except OSError:
+            pass
+
     # ── Buffer flush ───────────────────────────────────────────
 
     def _flush_buffer(self, contact_name: str) -> None:
