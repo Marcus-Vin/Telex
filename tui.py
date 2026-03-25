@@ -500,7 +500,7 @@ class TelexApp(App[None]):
         self.node.send(contact.addr, text)
         self._show_sent(name, text)
 
-    @on(Input.Submitted)
+    @on(Input.Submitted, "#cmd")
     def handle_command(self, event: Input.Submitted) -> None:
         if self.node is None:
             return
