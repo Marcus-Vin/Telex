@@ -391,16 +391,14 @@ class TelexApp(App[None]):
 
         self.node = Node(self.host, self.port, nickname=nickname)
         self.node.start()
-
-        # Substitui handler padrão de CHAT pelo da TUI
         self.node.router.register(MessageType.CHAT, self._on_chat_received)
 
-        # Registra callbacks de eventos de rede para atualização thread-safe da UI
-        self.node.on_contact_online   = lambda c: self.call_from_thread(self._on_contact_online, c)
-        self.node.on_contact_offline  = lambda c: self.call_from_thread(self._on_contact_offline, c)
-        self.node.on_ack_timeout      = lambda m: self.call_from_thread(self._on_ack_timeout, m)
-        self.node.on_message_buffered = lambda n, m: self.call_from_thread(self._on_message_buffered, n, m)
-        self.node.on_buffer_flushed   = lambda n, c: self.call_from_thread(self._on_buffer_flushed, n, c)
+        self.node.on_contact_online = lambda c: self.call_from_thread(self._on_contact_online, c)
+        self.node.on_contact_offline = lambda c: self.call_from_thread(self._on_contact_offline, c)
+        self.node.on_ack_received = lambda mid: self.call_from_thread(self._on_ack, mid)
+        self.node.on_ack_timeout = lambda msg: self.call_from_thread(self._on_ack_timeout, msg)
+        self.node.on_message_buffered = self._on_buffered
+        self.node.on_buffer_flushed = lambda n, c: self.call_from_thread(self._on_flushed, n, c)
 
         self.sub_title = f"{nickname}  •  {self.node.host}:{self.node.port}"
 
@@ -441,6 +439,38 @@ class TelexApp(App[None]):
         )
         self.bell()
 
+    def _on_contact_online(self, contact: Contact) -> None:
+        self._show_info(f"[bold green]●[/bold green] [bold]{contact.name}[/bold] está online")
+        self._refresh_status()
+
+    def _on_contact_offline(self, contact: Contact) -> None:
+        self._show_info(f"[dim]○[/dim] [bold]{contact.name}[/bold] está offline")
+        self._refresh_status()
+
+    def _on_ack(self, msg_id: str) -> None:
+        self.query_one("#chat", RichLog).write(
+            f"[dim]  ✓ entregue[/dim]"
+        )
+
+    def _on_ack_timeout(self, message: Message) -> None:
+        assert self.node is not None
+        contact = self.node.contacts.get_by_addr(tuple(message.receiver))
+        name = contact.name if contact else f"{message.receiver[0]}:{message.receiver[1]}"
+        self._show_error(f"✗ mensagem para {name} não foi entregue (sem ACK)")
+
+    def _on_buffered(self, contact_name: str, message: Message) -> None:
+        self._show_info(
+            f"[dim]⏳[/dim] mensagem para [bold]{contact_name}[/bold] "
+            f"armazenada no buffer (offline)"
+        )
+
+    def _on_flushed(self, contact_name: str, count: int) -> None:
+        plural = "s" if count > 1 else ""
+        self._show_info(
+            f"[bold green]↑[/bold green] {count} mensagem{plural} pendente{plural} "
+            f"enviada{plural} para [bold]{contact_name}[/bold]"
+        )
+
     def _show_sent(self, name: str, text: str) -> None:
         t = datetime.now().strftime("%H:%M")
         self.query_one("#chat", RichLog).write(
@@ -452,29 +482,6 @@ class TelexApp(App[None]):
 
     def _show_error(self, text: str) -> None:
         self.query_one("#chat", RichLog).write(f"[bold red]{text}[/bold red]")
-
-    # ── Callbacks de eventos de rede ───────────────────────────────────────
-
-    def _on_contact_online(self, contact: "Contact") -> None:
-        self._show_info(f"● [bold]{contact.name}[/bold] está online")
-        self._refresh_status()
-
-    def _on_contact_offline(self, contact: "Contact") -> None:
-        self._show_info(f"○ [bold]{contact.name}[/bold] ficou offline")
-        self._refresh_status()
-
-    def _on_ack_timeout(self, message: "Message") -> None:
-        assert self.node is not None
-        contact = self.node.contacts.get_by_addr(tuple(message.receiver))  # type: ignore[arg-type]
-        name = contact.name if contact else f"{message.receiver[0]}:{message.receiver[1]}"
-        self._show_error(f"⚠ mensagem para [bold]{name}[/bold] não foi entregue após {3} tentativas")
-
-    def _on_message_buffered(self, contact_name: str, _message: "Message") -> None:
-        self._show_info(f"⏸ [bold]{contact_name}[/bold] está offline — mensagem guardada no buffer")
-
-    def _on_buffer_flushed(self, contact_name: str, count: int) -> None:
-        noun = "mensagem" if count == 1 else "mensagens"
-        self._show_info(f"⟳ {count} {noun} pendente(s) enviada(s) para [bold]{contact_name}[/bold]")
 
     def _refresh_status(self) -> None:
         if self.node is None:
@@ -518,6 +525,7 @@ class TelexApp(App[None]):
         assert self.node is not None
         name, host, port = result
         self.node.contacts.add(name, (host, port))
+        self.node.ping_contact(name)
         self._show_info(f"[+] contato '[bold]{name}[/bold]' adicionado  ({host}:{port})")
         self._refresh_status()
         self.query_one("#cmd", Input).focus()
@@ -533,8 +541,7 @@ class TelexApp(App[None]):
             self._show_error(f"contato '{name}' não encontrado")
             return
         self.node.send(contact.addr, text)
-        if contact.online:
-            self._show_sent(name, text)
+        self._show_sent(name, text)
 
     @on(Input.Submitted)
     def handle_command(self, event: Input.Submitted) -> None:
@@ -562,6 +569,7 @@ class TelexApp(App[None]):
                 self._show_error("porta deve ser um número inteiro")
                 return
             self.node.contacts.add(name, (host, port))
+            self.node.ping_contact(name)
             self._show_info(f"[+] contato '[bold]{name}[/bold]' adicionado  ({host}:{port})")
             self._refresh_status()
 
@@ -576,8 +584,7 @@ class TelexApp(App[None]):
                 self._show_error(f"contato '{name}' não encontrado")
                 return
             self.node.send(contact.addr, text)
-            if contact.online:
-                self._show_sent(name, text)
+            self._show_sent(name, text)
 
         elif cmd == "/contacts":
             self.push_screen(ContactsModal(self.node.contacts.list_all()))

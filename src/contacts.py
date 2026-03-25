@@ -29,7 +29,10 @@ class ContactBook:
 
     def add(self, name: str, addr: tuple[str, int]) -> Contact:
         """Adiciona ou atualiza um contato pelo nome."""
-        contact = Contact(name, addr)
+        host, port = addr
+        if host.lower() == "localhost":
+            host = "127.0.0.1"
+        contact = Contact(name, (host, port))
         self._contacts[name] = contact
         return contact
 
